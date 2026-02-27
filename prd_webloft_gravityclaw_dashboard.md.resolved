@@ -1,0 +1,60 @@
+# Product Requirements Document (PRD): Webloft x Gravityclaw Dashboard
+
+## 1. Einleitung & Zielsetzung
+**Projekt:** Integration des Webloft-Dashboards in das Gravityclaw-Projekt.
+**Ziel:** Schaffung eines zentralen Workspaces ("Mission Control"), der menschliche Produktivitäts-Tools nahtlos mit dem autonomen KI-Agenten "Gravityclaw" vereint. Der ursprünglich geplante, einfache Chatbot-Assistent wird vollständig durch Gravityclaw ersetzt.
+**Vision:** Ein hybrides Dashboard, in dem Mensch und Maschine asynchron und synchron zusammenarbeiten – die KI agiert nicht nur als reaktiver Chatbot, sondern als proaktiver Mitarbeiter im selben System.
+
+## 2. Zielgruppe & Akteure
+*   **Menschliche Nutzer:** Projektmanager, Entwickler und Teammitglieder, die das Dashboard für ihr tägliches Aufgaben- und Lead-Management nutzen.
+*   **Gravityclaw (KI-Agent):** Ein autonomer, "headless" Agent, der eigenständig Aufgaben übernimmt, Systembefehle ausführt, Recherchen anstellt und den Nutzern zuarbeitet.
+
+## 3. Kernfunktionen (Core Features)
+
+### 3.1 Gravityclaw Setup & Agenten-Integration
+*   **Ersatz des klassischen Chatbots:** Gravityclaw wird tief in das Dashboard integriert und bietet mehr als nur ein Chat-Interface. Er hat vollen Zugriff auf den Kontext des Dashboards.
+*   **Autonome Handlungsfähigkeit (Headless Agent):** Gravityclaw kann im Hintergrund arbeiten, ohne auf ständige menschliche Prompts angewiesen zu sein.
+*   **System- & Werkzeugzugriff:** 
+    *   Ausführung von Terminal-Befehlen (mit Human-in-the-Loop Freigabe).
+    *   Dateisystem-Zugriff.
+    *   Integration externer Tools via Model Context Protocol (MCP).
+*   **LLM-Management:** Nutzung eines zuverlässigen LLMs (via OpenRouter) mit Tool-Calling, um komplexe Agenten-Loops stabil abzuarbeiten.
+
+### 3.2 Mission Control & Produktivitäts-Hub
+*   **Zentrale Übersicht:** Ein Dashboard, das alle relevanten Informationen für den Tag bündelt.
+*   **Echtzeit-Synchronisation:** Aktionen, die Gravityclaw im Hintergrund durchführt, werden in Echtzeit im Dashboard reflektiert (z.B. neuer Lead gefunden, Task abgeschlossen).
+*   **Morning Briefing:** Ein personalisiertes, tägliches Briefing (Fokus: KI & Politik), das von der KI auf Deutsch generiert und pünktlich zum Start in den Tag im Dashboard präsentiert wird.
+
+### 3.3 Task- & Board-Management
+*   **Gemeinsames Task-Board:** Mensch und KI nutzen ein geteiltes Board zur Aufgabenverwaltung.
+*   **Autonome Task-Erstellung:** Gravityclaw nutzt sein Toolset (`create_board_task`), um eigenständig Aufgaben, Erinnerungen oder Follow-ups anzulegen.
+*   **Delegation an KI:** Nutzer können Gravityclaw spezifische Tickets zuweisen, die dieser anhand der Beschreibung selbstständig abarbeitet (Beispiel: "Analysiere diese Website und füge die Ergebnisse dem Notion-Dokument hinzu").
+
+### 3.4 Shared Notepad & Knowledge Sync
+*   **Geteilte Notizen / Logs:** Ein kollaborativer Bereich, in dem die KI Rechercheergebnisse, Logs oder Zusammenfassungen ablegt.
+*   **Live-Sync:** Notizen des Agenten werden sofort in der Mission Control UI sichtbar, wodurch die Blackbox "KI-Agent" für den Menschen transparent wird.
+
+### 3.5 Core-Plattform & Architektur (Webloft)
+*   **Multi-Tenancy (Mandantenfähigkeit):** Unterstützung sicherer Datentrennung für verschiedene Organisationen und Nutzer (Multi-Organisations-Setup).
+*   **Lead- & Daten-Persistenz:** Sichere Speicherung von Leads. Gravityclaw kann diese Datenbank anreichern, auslesen und verwalten.
+*   **Sicheres Routing & Auth:** Fehlerfreier Onboarding-Flow und robustes Middleware-Routing, um Auth-Loops oder "Lockout"-States zu verhindern.
+
+## 4. User Journeys (Beispiele)
+
+1.  **Der Start in den Tag:** 
+    Der Nutzer loggt sich in das Dashboard ein, landet auf der *Mission Control* und liest das aktuelle Morning Briefing von Gravityclaw. Parallel sieht er, welche Hintergrundtasks (z.B. Lead-Recherche) über Nacht von der KI erledigt wurden.
+2.  **Delegation & Asynchrones Arbeiten:** 
+    Der Nutzer erstellt im Board ein Ticket: "Finde 5 neue KI-Startups und schreibe eine Zusammenfassung." Er weist das Ticket Gravityclaw zu. Gravityclaw startet seinen Loop, sucht im Web (via MCP), erstellt Notizen im *Shared Notepad* und hakt das Ticket nach Abschluss selbstständig ab.
+3.  **Human-in-the-Loop (Freigaben):** 
+    Gravityclaw generiert ein Code-Skript und möchte es auf dem Server der Organisation ausführen. Das Dashboard blockiert die Ausführung und zeigt dem Nutzer einen Review-Dialog. Der Nutzer prüft das Skript, klickt auf "Ausführen" und Gravityclaw führt die Aktion aus.
+
+## 5. Technische Roadmap & Architektur-Vorschlag
+1.  **Backend Zusammenführung:** Integration des Gravityclaw-Kerns in die Backend-Logik des Webloft-Projekts (oder Aufbau einer sauberen Kommunikationsschicht zwischen dem Next.js Dashboard und einem isolierten Gravityclaw-Node-Service).
+2.  **Dashboard-APIs:** Erstellung der Endpunkte für Gravityclaw, um mit dem Dashboard zu interagieren (Tasks erstellen, Notizen synchronisieren).
+3.  **Agenten UI-Elemente:** Ersetzen des standardmäßigen Chatfensters durch dedizierte Feed- und Activity-Komponenten in der Mission Control.
+4.  **Sicherheitsrichtlinien:** Serverseitige Berechtigungsprüfung für Agenten-Aktionen.
+
+## 6. Nächste Entscheidungen (Für das Team)
+*   **Repo Struktur:** Monorepo (Webloft Dashboard + Gravityclaw kombiniert) oder Microservices?
+*   **Activity Design:** Sollen Agenten-Aktivitäten als Stream (wie ein Terminal-Log) oder in aufbereiteter Karten-Form dargestellt werden?
+*   **MVP Scope:** Soll die Human-in-the-Loop Funktion direkt ins Dashboard UI gebaut werden, oder reicht für den Anfang eine CLI-Bestätigung?

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gravity Claw — Live Canvas</title>
+    <style>
+        body { font-family: 'Inter', system-ui, sans-serif; background: #0f172a; color: white; display: flex; flex-direction: column; align-items: center; padding: 2rem; }
+        .canvas { width: 100%; max-width: 800px; display: grid; gap: 1rem; }
+        .widget { background: #1e293b; border-radius: 12px; padding: 1.5rem; border: 1px solid #334155; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
+        .widget h3 { margin-top: 0; color: #38bdf8; border-bottom: 1px solid #334155; padding-bottom: 0.5rem; }
+        .status { position: fixed; bottom: 1rem; right: 1rem; font-size: 0.8rem; opacity: 0.6; }
+    </style>
+</head>
+<body>
+    <h1>🦾 Gravity Claw — Live Canvas</h1>
+    <div id="canvas" class="canvas">
+        <div class="widget">
+            <h3>System</h3>
+            <p>Waiting for widgets from Gravity Claw...</p>
+        </div>
+    </div>
+    <div id="status" class="status">Disconnected</div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const status = document.getElementById('status');
+        const ws = new WebSocket('ws://localhost:3001');
+
+        ws.onopen = () => {
+            status.innerText = 'Connected to Gravity Claw';
+            status.style.color = '#4ade80';
+        };
+
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.type === 'widget') {
+                const widget = document.createElement('div');
+                widget.className = 'widget';
+                
+                let content = `<h3>${data.title}</h3>${data.html}`;
+                if (data.css) content += `<style>${data.css}</style>`;
+                
+                widget.innerHTML = content;
+                
+                if (data.js) {
+                    const script = document.createElement('script');
+                    script.textContent = data.js;
+                    widget.appendChild(script);
+                }
+
+                canvas.prepend(widget);
+            }
+        };
+
+        ws.onclose = () => {
+            status.innerText = 'Disconnected';
+            status.style.color = '#f87171';
+        };
+    </script>
+</body>
+</html>

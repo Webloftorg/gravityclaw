@@ -1,0 +1,21 @@
+{
+    "agents": {
+        "list": [
+            {
+                "id": "gravity-claw",
+                "name": "Gravity Claw",
+                "description": "Lean, secure personal AI agent",
+                "workspace": "./",
+                "ui": {
+                    "emoji": "🦾",
+                    "color": "#00FF00"
+                }
+            }
+        ],
+        "defaults": {
+            "model": {
+                "primary": "gpt-4o"
+            }
+        }
+    }
+}
