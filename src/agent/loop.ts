@@ -71,9 +71,9 @@ async function executeTool(name: string, args: Record<string, unknown>, agentCon
         case "get_current_time":
             return executeTimeTool();
         case "core_memory_save":
-            return executeSaveCoreMemory(args);
+            return await executeSaveCoreMemory(args);
         case "core_memory_delete":
-            return executeDeleteCoreMemory(args);
+            return await executeDeleteCoreMemory(args);
         case "update_soul":
             return executeUpdateSoul(args);
         case "execute_terminal":
@@ -140,7 +140,7 @@ export async function runAgentLoop(
 
     try {
         // ── Pre-Turn: Gather State (Facts & Semantics) ───────────────────────────
-        const facts = getFacts();
+        const facts = await getFacts();
 
         let onboardingPrompt = "";
         if (facts === "No core facts known yet.") {

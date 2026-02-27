@@ -33,9 +33,9 @@ export const saveCoreMemoryTool: OpenAI.Chat.ChatCompletionTool = {
     },
 };
 
-export function executeSaveCoreMemory(input: unknown): string {
+export async function executeSaveCoreMemory(input: unknown): Promise<string> {
     const { key, value } = input as { key: string; value: string };
-    saveFact(key, value);
+    await saveFact(key, value);
     return `Successfully saved core fact: ${key} = ${value}`;
 }
 
@@ -59,9 +59,9 @@ export const deleteCoreMemoryTool: OpenAI.Chat.ChatCompletionTool = {
     },
 };
 
-export function executeDeleteCoreMemory(input: unknown): string {
+export async function executeDeleteCoreMemory(input: unknown): Promise<string> {
     const { key } = input as { key: string };
-    deleteFact(key);
+    await deleteFact(key);
     return `Successfully deleted core fact: ${key}`;
 }
 

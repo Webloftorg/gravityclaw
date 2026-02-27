@@ -27,7 +27,7 @@ export async function embedText(text: string): Promise<number[]> {
 export async function saveEpisode(userId: number, summary: string): Promise<void> {
     try {
         const vector = await embedText(summary);
-        saveEpisodeDb(userId, summary, JSON.stringify(vector));
+        await saveEpisodeDb(userId, summary, JSON.stringify(vector));
         console.log(`[semantic] Saved episode summary for user ${userId} (Shared Brain)`);
     } catch (err) {
         console.error(`[semantic] Could not save episode:`, err);
@@ -51,7 +51,7 @@ export async function searchEpisodes(userId: number, queryText: string, topK: nu
     try {
         const queryVector = await embedText(queryText);
         // We fetch ALL episodes to create a shared brain between the user and the business partner!
-        const allEpisodes = getAllEpisodes();
+        const allEpisodes = await getAllEpisodes();
 
         const scoredEpisodes = allEpisodes.map((ep: { summary: string, vector: string }) => {
             const epVector = JSON.parse(ep.vector) as number[];

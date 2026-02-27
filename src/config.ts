@@ -21,7 +21,8 @@ export const GOOGLE_API_KEY = requireEnv("GOOGLE_API_KEY");
 export const GROQ_API_KEY = requireEnv("GROQ_API_KEY");
 export const ELEVENLABS_API_KEY = requireEnv("ELEVENLABS_API_KEY");
 export const TAVILY_API_KEY = process.env.TAVILY_API_KEY; // Optional
-export const DB_PATH = process.env.DB_PATH || "memory.db";
+export const SUPABASE_URL = requireEnv("SUPABASE_URL");
+export const SUPABASE_KEY = requireEnv("SUPABASE_KEY");
 
 // Parse comma-separated user IDs into a Set<number>
 const rawIds = requireEnv("ALLOWED_USER_IDS");

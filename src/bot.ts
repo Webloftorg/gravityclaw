@@ -123,7 +123,7 @@ bot.command("clear", async (ctx) => {
 
 // ── /context command — view current core profile ──────────────────────────────
 bot.command("context", async (ctx) => {
-    const facts = getFacts();
+    const facts = await getFacts();
     await safeReply(ctx, `🧠 *Current Core Context:*\n\n${facts}`);
 });
 

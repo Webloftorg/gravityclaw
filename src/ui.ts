@@ -2,8 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { join } from 'path';
-import { db } from './memory/db.js';
-import { DB_PATH } from './config.js';
+import { supabase } from './memory/db.js';
 
 const ROOT_DIR = process.cwd();
 const NOTEPAD_PATH = join(ROOT_DIR, 'notepad.json');
@@ -18,15 +17,21 @@ app.use(express.json());
 
 // ── Agent Status Endpoint ──────────────────────────────────────
 
-app.get('/api/agent-status', (req, res) => {
+app.get('/api/agent-status', async (req, res) => {
     try {
         let activeTask = null;
-        // Always return the active task being worked on (In Bearbeitung) if it exists
-        const stmt = db.prepare("SELECT id, title FROM tasks WHERE status = 'In Bearbeitung' ORDER BY createdAt DESC LIMIT 1");
-        const task = stmt.get() as { id: string, title: string } | undefined;
-        if (task) {
+        const { data: task, error } = await supabase
+            .from('tasks')
+            .select('id, title')
+            .eq('status', 'In Bearbeitung')
+            .order('createdAt', { ascending: false })
+            .limit(1)
+            .single();
+
+        if (task && !error) {
             activeTask = { id: task.id, title: task.title };
         }
+
         res.json({
             status: agentState.status,
             activeTask: activeTask
@@ -72,28 +77,37 @@ app.post('/api/notepad', (req, res) => {
 
 // ── SQLite Endpoints ──────────────────────────────────────────
 
-app.get('/api/memories', (req, res) => {
+app.get('/api/memories', async (req, res) => {
     try {
-        const stmt = db.prepare("SELECT * FROM episodic_memories ORDER BY createdAt DESC LIMIT 100");
-        const memories = stmt.all();
-        // Don't send the entire raw vectors to the UI to save bandwidth
-        const safeMemories = memories.map((m: any) => ({
-            id: m.id,
-            summary: m.summary,
-            createdAt: m.createdAt,
-            userId: m.userId
-        }));
-        res.json(safeMemories);
+        const { data: memories, error } = await supabase
+            .from('episodic_memories')
+            .select('id, summary, createdAt, "userId"')
+            .order('createdAt', { ascending: false })
+            .limit(100);
+
+        if (error) {
+            console.error("[ui-api] Supabase error reading memories:", error);
+            return res.status(500).json({ error: "Could not read memories." });
+        }
+
+        // Return memories directly as vector is excluded via the .select
+        res.json(memories);
     } catch (err) {
         console.error("[ui-api] Error reading memories:", err);
         res.status(500).json({ error: "Could not read memories." });
     }
 });
 
-app.get('/api/facts', (req, res) => {
+app.get('/api/facts', async (req, res) => {
     try {
-        const stmt = db.prepare("SELECT key, value FROM core_facts");
-        const facts = stmt.all();
+        const { data: facts, error } = await supabase
+            .from('core_facts')
+            .select('key, value');
+
+        if (error) {
+            console.error("[ui-api] Supabase error reading facts:", error);
+            return res.status(500).json({ error: "Could not read facts." });
+        }
         res.json(facts);
     } catch (err) {
         console.error("[ui-api] Error reading facts:", err);
@@ -103,10 +117,17 @@ app.get('/api/facts', (req, res) => {
 
 // ── Kanban Tasks Endpoints ────────────────────────────────────────
 
-app.get('/api/tasks', (req, res) => {
+app.get('/api/tasks', async (req, res) => {
     try {
-        const stmt = db.prepare("SELECT * FROM tasks ORDER BY createdAt DESC");
-        const tasks = stmt.all();
+        const { data: tasks, error } = await supabase
+            .from('tasks')
+            .select('*')
+            .order('createdAt', { ascending: false });
+
+        if (error) {
+            console.error("[ui-api] Supabase error reading tasks:", error);
+            return res.status(500).json({ error: "Could not read tasks." });
+        }
         res.json(tasks);
     } catch (err) {
         console.error("[ui-api] Error reading tasks:", err);
@@ -116,18 +137,28 @@ app.get('/api/tasks', (req, res) => {
 
 import { randomUUID } from 'crypto';
 
-app.post('/api/tasks', (req, res) => {
+app.post('/api/tasks', async (req, res) => {
     try {
         let { id, title, description, status, priority, scheduledAt } = req.body;
         if (!title) return res.status(400).json({ error: "Missing required field: title" });
 
         if (!id) id = randomUUID();
 
-        const stmt = db.prepare(`
-            INSERT INTO tasks (id, title, description, status, priority, scheduledAt)
-            VALUES (@id, @title, @description, @status, @priority, @scheduledAt)
-        `);
-        stmt.run({ id, title, description: description || '', status: status || 'Geplant', priority: priority || 'Mittel', scheduledAt: scheduledAt || null });
+        const { error } = await supabase
+            .from('tasks')
+            .insert({
+                id,
+                title,
+                description: description || '',
+                status: status || 'Geplant',
+                priority: priority || 'Mittel',
+                scheduledAt: scheduledAt || null
+            });
+
+        if (error) {
+            console.error("[ui-api] Supabase error creating task:", error);
+            return res.status(500).json({ error: "Could not create task." });
+        }
         res.json({ success: true, id });
     } catch (err) {
         console.error("[ui-api] Error creating task:", err);
@@ -138,25 +169,36 @@ app.post('/api/tasks', (req, res) => {
 import { bot } from './bot.js';
 import { ALLOWED_USER_IDS } from './config.js';
 
-app.put('/api/tasks/:id', (req, res) => {
+app.put('/api/tasks/:id', async (req, res) => {
     try {
         const { id } = req.params;
         const { title, description, status, priority, scheduledAt } = req.body;
 
-        const stmt = db.prepare(`
-            UPDATE tasks 
-            SET title = COALESCE(@title, title),
-                description = COALESCE(@description, description),
-                status = COALESCE(@status, status),
-                priority = COALESCE(@priority, priority),
-                scheduledAt = COALESCE(@scheduledAt, scheduledAt)
-            WHERE id = @id
-        `);
-        stmt.run({ id, title, description, status, priority, scheduledAt: scheduledAt || null });
+        const updateData: any = {};
+        if (title !== undefined) updateData.title = title;
+        if (description !== undefined) updateData.description = description;
+        if (status !== undefined) updateData.status = status;
+        if (priority !== undefined) updateData.priority = priority;
+        if (scheduledAt !== undefined) updateData.scheduledAt = scheduledAt || null;
+
+        const { error } = await supabase
+            .from('tasks')
+            .update(updateData)
+            .eq('id', id);
+
+        if (error) {
+            console.error("[ui-api] Supabase error updating task:", error);
+            return res.status(500).json({ error: "Could not update task." });
+        }
 
         if (status === 'Review') {
-            const getTask = db.prepare("SELECT title FROM tasks WHERE id = ?").get(id) as any;
-            const taskTitle = getTask?.title || id;
+            const { data: getTask, error: getError } = await supabase
+                .from('tasks')
+                .select('title')
+                .eq('id', id)
+                .single();
+
+            const taskTitle = getError ? id : (getTask as any)?.title || id;
             for (const userId of ALLOWED_USER_IDS) {
                 bot.api.sendMessage(userId, `🚀 *Task Review Ready (via Dashboard):*\n${taskTitle}\n\nBitte werfe einen Blick darauf!`, { parse_mode: "Markdown" }).catch(() => { });
             }
@@ -169,11 +211,18 @@ app.put('/api/tasks/:id', (req, res) => {
     }
 });
 
-app.delete('/api/tasks/:id', (req, res) => {
+app.delete('/api/tasks/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const stmt = db.prepare("DELETE FROM tasks WHERE id = @id");
-        stmt.run({ id });
+        const { error } = await supabase
+            .from('tasks')
+            .delete()
+            .eq('id', id);
+
+        if (error) {
+            console.error("[ui-api] Supabase error deleting task:", error);
+            return res.status(500).json({ error: "Could not delete task." });
+        }
         res.json({ success: true, id });
     } catch (err) {
         console.error("[ui-api] Error deleting task:", err);

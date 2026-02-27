@@ -3,7 +3,7 @@
  */
 import { readFileSync, writeFileSync, existsSync } from "fs";
 import { join } from "path";
-import { db } from "../memory/db.js";
+import { supabase } from "../memory/db.js";
 import { bot } from "../bot.js";
 import { ALLOWED_USER_IDS } from "../config.js";
 
@@ -104,26 +104,35 @@ export function write_notepad({ text }: { text: string }): string {
     }
 }
 
-export function get_board_tasks(): string {
+export async function get_board_tasks(): Promise<string> {
     try {
-        const stmt = db.prepare(`
-            SELECT * FROM tasks 
-            WHERE status IN ('Geplant', 'In Bearbeitung')
-            ORDER BY 
-                CASE WHEN scheduledAt IS NOT NULL THEN 0 ELSE 1 END,
-                scheduledAt ASC,
-                CASE priority 
-                    WHEN 'Hoch' THEN 1 
-                    WHEN 'Mittel' THEN 2 
-                    WHEN 'Niedrig' THEN 3 
-                    ELSE 4 
-                END
-        `);
-        const tasks = stmt.all() as any[];
+        const { data: tasks, error } = await supabase
+            .from('tasks')
+            .select('*')
+            .in('status', ['Geplant', 'In Bearbeitung']);
 
-        if (tasks.length === 0) return "Keine Aufgaben auf dem Board.";
+        if (error) {
+            console.error("[dashboard] Supabase Error reading tasks:", error);
+            return "Error: Could not read tasks from DB.";
+        }
 
-        return tasks.map(t =>
+        if (!tasks || tasks.length === 0) return "Keine Aufgaben auf dem Board.";
+
+        // Sorting in Javascript since Supabase order behavior with case statements is complex
+        const priorityScore: Record<string, number> = { 'Hoch': 1, 'Mittel': 2, 'Niedrig': 3 };
+
+        tasks.sort((a, b) => {
+            const dateA = a.scheduledAt ? new Date(a.scheduledAt).getTime() : Infinity;
+            const dateB = b.scheduledAt ? new Date(b.scheduledAt).getTime() : Infinity;
+
+            if (dateA !== dateB) return dateA - dateB;
+
+            const prioA = priorityScore[a.priority as string] || 4;
+            const prioB = priorityScore[b.priority as string] || 4;
+            return prioA - prioB;
+        });
+
+        return tasks.map((t: any) =>
             `ID: ${t.id} | Status: ${t.status} | Prio: ${t.priority} | Fällig: ${t.scheduledAt || 'Nein'}\nTitel: ${t.title}\nBeschreibung: ${t.description || '-'}\n`
         ).join("\n---\n");
     } catch (err) {
@@ -134,16 +143,29 @@ export function get_board_tasks(): string {
 
 export async function update_task_status(args: { taskId: string, status: string, message?: string }): Promise<string> {
     try {
-        const stmt = db.prepare("UPDATE tasks SET status = @status WHERE id = @id");
-        const info = stmt.run({ id: args.taskId, status: args.status });
+        const { data, error } = await supabase
+            .from('tasks')
+            .update({ status: args.status })
+            .eq('id', args.taskId)
+            .select();
 
-        if (info.changes === 0) {
+        if (error) {
+            console.error("[dashboard] Error updating task in Supabase:", error);
+            return "Error: Could not update task.";
+        }
+
+        if (!data || data.length === 0) {
             return `Fehler: Task ID ${args.taskId} nicht gefunden.`;
         }
 
         if (args.status === 'Review') {
-            const getTask = db.prepare("SELECT title FROM tasks WHERE id = ?").get(args.taskId) as any;
-            const taskTitle = getTask?.title || args.taskId;
+            const { data: getTask, error: getError } = await supabase
+                .from('tasks')
+                .select('title')
+                .eq('id', args.taskId)
+                .single();
+
+            const taskTitle = getError ? args.taskId : (getTask as any)?.title || args.taskId;
 
             for (const userId of ALLOWED_USER_IDS) {
                 try {
@@ -164,21 +186,25 @@ export async function update_task_status(args: { taskId: string, status: string,
 
 import { randomUUID } from "crypto";
 
-export function create_board_task(args: { title: string, description?: string, priority?: string, scheduledAt?: string }): string {
+export async function create_board_task(args: { title: string, description?: string, priority?: string, scheduledAt?: string }): Promise<string> {
     try {
         const id = randomUUID();
-        const stmt = db.prepare(`
-            INSERT INTO tasks (id, title, description, status, priority, scheduledAt)
-            VALUES (@id, @title, @description, @status, @priority, @scheduledAt)
-        `);
-        stmt.run({
-            id,
-            title: args.title,
-            description: args.description || '',
-            status: 'Geplant',
-            priority: args.priority || 'Mittel',
-            scheduledAt: args.scheduledAt || null
-        });
+        const { error } = await supabase
+            .from('tasks')
+            .insert({
+                id,
+                title: args.title,
+                description: args.description || '',
+                status: 'Geplant',
+                priority: args.priority || 'Mittel',
+                scheduledAt: args.scheduledAt || null
+            });
+
+        if (error) {
+            console.error("[dashboard] Error creating task in Supabase:", error);
+            return "Error: Could not create task.";
+        }
+
         return `Task '${args.title}' erfolgreich im Kanban-Board in Spalte 'Geplant' erstellt.`;
     } catch (err) {
         console.error("[dashboard] Error creating task:", err);
