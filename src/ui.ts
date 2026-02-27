@@ -11,6 +11,7 @@ const app = express();
 const PORT = 4001;
 
 import { agentState } from './agentState.js';
+import { loginUser, registerUser, getAllUsers } from './memory/auth.js';
 
 app.use(cors());
 app.use(express.json());
@@ -139,7 +140,7 @@ import { randomUUID } from 'crypto';
 
 app.post('/api/tasks', async (req, res) => {
     try {
-        let { id, title, description, status, priority, scheduledAt } = req.body;
+        let { id, title, description, status, priority, scheduledAt, assignee } = req.body;
         if (!title) return res.status(400).json({ error: "Missing required field: title" });
 
         if (!id) id = randomUUID();
@@ -152,6 +153,7 @@ app.post('/api/tasks', async (req, res) => {
                 description: description || '',
                 status: status || 'Geplant',
                 priority: priority || 'Mittel',
+                assignee: assignee || 'Unassigned',
                 scheduledAt: scheduledAt || null
             });
 
@@ -172,13 +174,14 @@ import { ALLOWED_USER_IDS } from './config.js';
 app.put('/api/tasks/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const { title, description, status, priority, scheduledAt } = req.body;
+        const { title, description, status, priority, scheduledAt, assignee } = req.body;
 
         const updateData: any = {};
         if (title !== undefined) updateData.title = title;
         if (description !== undefined) updateData.description = description;
         if (status !== undefined) updateData.status = status;
         if (priority !== undefined) updateData.priority = priority;
+        if (assignee !== undefined) updateData.assignee = assignee;
         if (scheduledAt !== undefined) updateData.scheduledAt = scheduledAt || null;
 
         const { error } = await supabase
@@ -227,6 +230,52 @@ app.delete('/api/tasks/:id', async (req, res) => {
     } catch (err) {
         console.error("[ui-api] Error deleting task:", err);
         res.status(500).json({ error: "Could not delete task." });
+    }
+});
+
+// ── Auth & Users Endpoints ─────────────────────────────────────
+
+app.post('/api/auth/register', (req, res) => {
+    try {
+        const { username, password } = req.body;
+        if (!username || !password) {
+            return res.status(400).json({ error: 'Username and password required' });
+        }
+        const user = registerUser(username, password);
+        if (!user) {
+            return res.status(409).json({ error: 'Username already exists' });
+        }
+        res.json({ success: true, user });
+    } catch (err) {
+        console.error('[ui-api] Registration error:', err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.post('/api/auth/login', (req, res) => {
+    try {
+        const { username, password } = req.body;
+        if (!username || !password) {
+            return res.status(400).json({ error: 'Username and password required' });
+        }
+        const user = loginUser(username, password);
+        if (!user) {
+            return res.status(401).json({ error: 'Invalid credentials' });
+        }
+        res.json({ success: true, user });
+    } catch (err) {
+        console.error('[ui-api] Login error:', err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.get('/api/users', (req, res) => {
+    try {
+        const users = getAllUsers();
+        res.json(users);
+    } catch (err) {
+        console.error('[ui-api] Fetch users error:', err);
+        res.status(500).json({ error: 'Internal server error' });
     }
 });
 

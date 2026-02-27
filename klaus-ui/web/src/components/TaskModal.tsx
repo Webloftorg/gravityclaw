@@ -8,6 +8,7 @@ interface Task {
     status: string;
     priority: string;
     scheduledAt: string | null;
+    assignee?: string;
 }
 
 interface TaskModalProps {
@@ -15,12 +16,15 @@ interface TaskModalProps {
     onClose: () => void;
     onSave: (task: Partial<Task>) => void;
     initialData?: Task | null;
+    users?: { id: string; username: string }[];
+    currentUser?: { id: string; username: string };
 }
 
-export function TaskModal({ isOpen, onClose, onSave, initialData }: TaskModalProps) {
+export function TaskModal({ isOpen, onClose, onSave, initialData, users = [], currentUser }: TaskModalProps) {
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [priority, setPriority] = useState('Mittel');
+    const [assignee, setAssignee] = useState(currentUser?.id || 'Unassigned');
     const [scheduledAt, setScheduledAt] = useState('');
 
     useEffect(() => {
@@ -28,6 +32,7 @@ export function TaskModal({ isOpen, onClose, onSave, initialData }: TaskModalPro
             setTitle(initialData.title || '');
             setDescription(initialData.description || '');
             setPriority(initialData.priority || 'Mittel');
+            setAssignee(initialData.assignee || currentUser?.id || 'Unassigned');
 
             // Convert ISO to datetime-local format
             if (initialData.scheduledAt) {
@@ -46,6 +51,7 @@ export function TaskModal({ isOpen, onClose, onSave, initialData }: TaskModalPro
             setTitle('');
             setDescription('');
             setPriority('Mittel');
+            setAssignee('Unassigned');
             setScheduledAt('');
         }
     }, [initialData, isOpen]);
@@ -61,6 +67,7 @@ export function TaskModal({ isOpen, onClose, onSave, initialData }: TaskModalPro
             title: title.trim(),
             description: description.trim(),
             priority,
+            assignee,
             scheduledAt: scheduledAt ? new Date(scheduledAt).toISOString() : null
         });
         onClose();
@@ -132,6 +139,24 @@ export function TaskModal({ isOpen, onClose, onSave, initialData }: TaskModalPro
                                 onChange={e => setScheduledAt(e.target.value)}
                                 className="w-full px-4 py-2.5 bg-slate-950 border border-emerald-500/50 rounded-lg text-emerald-100 focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400"
                             />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-slate-400 mb-1.5 flex items-center gap-1.5">
+                                <AlertCircle className="w-4 h-4" /> Zugewiesen an
+                            </label>
+                            <select
+                                value={assignee}
+                                onChange={e => setAssignee(e.target.value)}
+                                className="w-full px-4 py-2.5 bg-slate-950 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-klaus-blue appearance-none"
+                            >
+                                <option value="Unassigned">Keine Zuordnung</option>
+                                {users.map(u => (
+                                    <option key={u.id} value={u.id}>
+                                        {u.id === 'id1234567' ? '🤖 ' : '👨‍💻 '} {u.username}
+                                    </option>
+                                ))}
+                            </select>
                         </div>
                     </div>
 

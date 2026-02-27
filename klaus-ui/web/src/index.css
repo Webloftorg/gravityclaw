@@ -1,34 +1,35 @@
 @import "tailwindcss";
 
 @theme {
-  --color-klaus-blue: #0ea5e9;
-  --color-klaus-indigo: #6366f1;
-  --color-klaus-dark: rgba(15, 23, 42, 0.7);
+  --color-klaus-orange: #FF6B35;
+  --color-klaus-orange-light: #FF8F66;
+  --color-klaus-dark: rgba(255, 255, 255, 0.8);
+  --color-klaus-text: #2D2D2A;
 }
 
 body {
-  background-color: #020617; /* Tailwind Slate 950 */
-  color: #f8fafc;
+  background-color: #F5F5F0; /* Light Beige */
+  color: var(--color-klaus-text);
   font-family: 'Inter', system-ui, sans-serif;
   margin: 0;
   -webkit-font-smoothing: antialiased;
   background-image: 
-    radial-gradient(circle at 15% 50%, rgba(14, 165, 233, 0.08), transparent 25%),
-    radial-gradient(circle at 85% 30%, rgba(99, 102, 241, 0.08), transparent 25%);
+    radial-gradient(circle at 15% 50%, rgba(255, 107, 53, 0.05), transparent 25%),
+    radial-gradient(circle at 85% 30%, rgba(255, 143, 102, 0.05), transparent 25%);
   background-attachment: fixed;
 }
 
 .glass-panel {
-  background: var(--color-klaus-dark);
+  background: white;
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 0.05);
   border-radius: 1.25rem;
 }
 
 .text-gradient {
-  background: linear-gradient(135deg, var(--color-klaus-blue), var(--color-klaus-indigo));
+  background: linear-gradient(135deg, var(--color-klaus-orange), var(--color-klaus-orange-light));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
